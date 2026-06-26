@@ -203,27 +203,35 @@ def get_db():
 db = get_db()
 
 # ── Claude Helper ─────────────────────────────────────────────────────────────
-@st.cache_resource
-def get_groq_client():
+def get_groq_api_key():
+    """Get Groq API key from secrets or env."""
     api_key = ""
-    # Try Streamlit secrets first
     try:
         api_key = st.secrets["GROQ_API_KEY"]
     except Exception:
         pass
-    # Fallback to env variable
     if not api_key:
         api_key = os.getenv("GROQ_API_KEY", "")
-    if not api_key:
-        st.error("⚠️ GROQ_API_KEY not found! Please add it in Streamlit Secrets.")
-        st.stop()
-    from groq import Groq
-    return Groq(api_key=api_key)
+    return api_key
 
 def ask_claude(system: str, user_msg: str, max_tokens: int = 1500) -> str:
-    """Uses Groq (llama-3.3-70b) — same interface as before."""
+    """Uses Groq (llama-3.3-70b) — called fresh every time, no cache."""
+    from groq import Groq
+    import httpx
+
+    api_key = get_groq_api_key()
+    if not api_key:
+        st.error("⚠️ GROQ_API_KEY missing! Add it in Streamlit → Manage App → Secrets.")
+        st.stop()
+
     try:
-        client = get_groq_client()
+        client = Groq(
+            api_key=api_key,
+            http_client=httpx.Client(
+                timeout=60.0,
+                transport=httpx.HTTPTransport(retries=2),
+            )
+        )
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             max_tokens=max_tokens,
@@ -234,8 +242,9 @@ def ask_claude(system: str, user_msg: str, max_tokens: int = 1500) -> str:
         )
         return resp.choices[0].message.content
     except Exception as e:
-        st.error(f"AI Error: {str(e)}")
-        return "{}"  
+        st.error(f"❌ Groq API Error: {str(e)}")
+        st.info("💡 Check: 1) GROQ_API_KEY in Secrets  2) Key starts with gsk_  3) Reboot app")
+        st.stop()
 
 # ── Session State Init ────────────────────────────────────────────────────────
 for key, val in {

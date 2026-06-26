@@ -9,3 +9,5 @@ python-dotenv
 Pillow
 fpdf2
 textblob
+
+httpx
