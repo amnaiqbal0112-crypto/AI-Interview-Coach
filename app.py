@@ -346,14 +346,25 @@ def show_sidebar():
         st.markdown(f"*Welcome, **{st.session_state.user_name}**!*")
         st.markdown("---")
 
-        pages = [
-            "📊 Dashboard", "📄 Resume Analyzer", "🎤 Mock Interview",
-            "📜 Interview History", "📈 Analytics",
-            "🎯 Career Coach", "🔍 ATS Checker", "✉️ Cover Letter",
-            "👤 Profile", "⚙️ Settings",
-        ]
-        choice = st.radio("Navigation", pages, label_visibility="collapsed")
-        st.session_state.page = choice.split(" ", 1)[1]
+        page_map = {
+            "📊 Dashboard":        "Dashboard",
+            "📄 Resume Analyzer":  "Resume Analyzer",
+            "🎤 Mock Interview":   "Mock Interview",
+            "📜 Interview History":"Interview History",
+            "📈 Analytics":        "Analytics",
+            "🎯 Career Coach":     "Career Coach",
+            "🔍 ATS Checker":      "ATS Checker",
+            "✉️ Cover Letter":     "Cover Letter",
+            "👤 Profile":          "Profile",
+            "⚙️ Settings":         "Settings",
+        }
+        pages = list(page_map.keys())
+        # Find current page index for default selection
+        reverse_map = {v: k for k, v in page_map.items()}
+        current_label = reverse_map.get(st.session_state.page, pages[0])
+        current_idx = pages.index(current_label) if current_label in pages else 0
+        choice = st.radio("Navigation", pages, index=current_idx, label_visibility="collapsed")
+        st.session_state.page = page_map[choice]
 
         st.markdown("---")
         st.markdown("""
@@ -451,10 +462,18 @@ def page_dashboard():
 
     with b1:
         st.markdown("#### ⚡ Quick Actions")
-        if st.button("📄 Analyze Resume",  use_container_width=True): st.session_state.page = "Resume Analyzer"; st.rerun()
-        if st.button("🎤 Start Interview", use_container_width=True): st.session_state.page = "Mock Interview";  st.rerun()
-        if st.button("🔍 ATS Checker",     use_container_width=True): st.session_state.page = "ATS Checker";     st.rerun()
-        if st.button("🎯 Career Coach",    use_container_width=True): st.session_state.page = "Career Coach";    st.rerun()
+        if st.button("📄 Analyze Resume",  use_container_width=True):
+            st.session_state.page = "Resume Analyzer"
+            st.rerun()
+        if st.button("🎤 Start Interview", use_container_width=True):
+            st.session_state.page = "Mock Interview"
+            st.rerun()
+        if st.button("🔍 ATS Checker",     use_container_width=True):
+            st.session_state.page = "ATS Checker"
+            st.rerun()
+        if st.button("🎯 Career Coach",    use_container_width=True):
+            st.session_state.page = "Career Coach"
+            st.rerun()
 
     with b2:
         st.markdown("#### 🧠 Skill Strength")
@@ -544,6 +563,9 @@ def page_resume():
             db.add(resume); db.commit()
             st.session_state["last_resume"] = analysis
             st.session_state["last_ats"]    = ats
+            # Debug: show what was parsed
+            if not analysis.get("strengths") and not analysis.get("skills"):
+                st.warning("⚠️ AI returned empty data. Check if PDF has readable text.")
 
     if "last_resume" in st.session_state:
         analysis = st.session_state["last_resume"]
@@ -574,10 +596,31 @@ def page_resume():
 
         with t3:
             ca, cb = st.columns(2)
-            ca.markdown("**Strengths:**")
-            for s in analysis.get("strengths", []): ca.markdown(f"✅ {s}")
-            cb.markdown("**Areas to Improve:**")
-            for w in analysis.get("weaknesses", []): cb.markdown(f"⚠️ {w}")
+            ca.markdown("**💪 Strengths:**")
+            strengths_list = analysis.get("strengths", [])
+            if strengths_list:
+                for s in strengths_list:
+                    ca.markdown(f"✅ {s}")
+            else:
+                ca.info("No strengths detected. Try uploading a more detailed resume.")
+
+            cb.markdown("**⚠️ Areas to Improve:**")
+            weaknesses_list = analysis.get("weaknesses", [])
+            if weaknesses_list:
+                for w in weaknesses_list:
+                    cb.markdown(f"⚠️ {w}")
+            else:
+                cb.info("No weaknesses detected.")
+
+            st.markdown("---")
+            st.markdown("**🔸 Missing Skills to Add:**")
+            missing = analysis.get("missing_skills", [])
+            if missing:
+                cols_m = st.columns(3)
+                for i, sk in enumerate(missing):
+                    cols_m[i % 3].markdown(f"🔸 {sk}")
+            else:
+                st.info("No missing skills detected.")
 
         with t4:
             st.metric("ATS Score", f"{ats.get('ats_score', 0):.0f}/100")
