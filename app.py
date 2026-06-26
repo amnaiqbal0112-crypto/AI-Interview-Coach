@@ -243,8 +243,37 @@ def ask_claude(system: str, user_msg: str, max_tokens: int = 1500) -> str:
         return resp.choices[0].message.content
     except Exception as e:
         st.error(f"❌ Groq API Error: {str(e)}")
-        st.info("💡 Check: 1) GROQ_API_KEY in Secrets  2) Key starts with gsk_  3) Reboot app")
+        st.info("💡 Check GROQ_API_KEY in Streamlit Secrets → Manage App → Settings")
         st.stop()
+
+def safe_json_parse(text: str, fallback: dict) -> dict:
+    """Clean LLM response and parse JSON safely."""
+    text = text.strip()
+    # Remove markdown code blocks
+    if "```" in text:
+        parts = text.split("```")
+        for part in parts:
+            part = part.strip()
+            if part.startswith("json"):
+                part = part[4:].strip()
+            try:
+                return json.loads(part)
+            except:
+                continue
+    # Try direct parse
+    try:
+        return json.loads(text)
+    except:
+        # Try finding JSON object in text
+        import re
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except:
+                pass
+    return fallback
+
 
 # ── Session State Init ────────────────────────────────────────────────────────
 for key, val in {
@@ -482,18 +511,21 @@ def page_resume():
                 "summary (string), strengths (list), weaknesses (list), missing_skills (list). "
                 "Return ONLY valid JSON, no extra text."
             )
-            resp = ask_claude(system, raw_text, max_tokens=2000)
-            try:    analysis = json.loads(resp)
-            except: analysis = {}
+            resp = ask_claude(system, raw_text[:3000], max_tokens=2000)
+            analysis = safe_json_parse(resp, {
+                "skills": [], "education": [], "experience": [],
+                "projects": [], "summary": "Could not parse resume.",
+                "strengths": [], "weaknesses": [], "missing_skills": []
+            })
 
             ats_sys = (
                 "You are an ATS expert. Analyze resume for ATS compatibility and return JSON with: "
                 "ats_score (float 0-100), formatting_issues (list), keywords_found (list), "
                 "missing_keywords (list), improvement_suggestions (list). Return ONLY valid JSON."
             )
-            ats_resp = ask_claude(ats_sys, raw_text, max_tokens=1500)
-            try:    ats = json.loads(ats_resp)
-            except: ats = {"ats_score": 0}
+            ats_resp = ask_claude(ats_sys, raw_text[:3000], max_tokens=1500)
+            ats = safe_json_parse(ats_resp, {"ats_score": 50, "keywords_found": [],
+                "missing_keywords": [], "formatting_issues": [], "improvement_suggestions": []})
 
             resume = Resume(
                 user_id=st.session_state.user_id,
@@ -593,7 +625,7 @@ def page_interview():
             st.rerun()
 
     elif st.session_state.interview_active:
-        session = db.query(InterviewSession).get(st.session_state.interview_session_id)
+        session = db.get(InterviewSession, st.session_state.interview_session_id)
         answered = db.query(InterviewQuestion).filter(
             InterviewQuestion.session_id == st.session_state.interview_session_id,
             InterviewQuestion.user_answer != None
@@ -624,10 +656,12 @@ def page_interview():
                 ev_resp = ask_claude(sys_eval,
                     f"Domain:{session.domain}\nQ:{st.session_state.current_question}\nA:{answer}",
                     max_tokens=1200)
-                try:    ev = json.loads(ev_resp)
-                except: ev = {"overall_rating": 5, "detailed_feedback": "Evaluation failed."}
+                ev = safe_json_parse(ev_resp, {"overall_rating": 5, "technical_score": 5,
+                    "communication_score": 5, "confidence_score": 5, "relevance_score": 5,
+                    "grammar_score": 5, "strengths": [], "improvements": [],
+                    "detailed_feedback": "Could not evaluate."})
 
-                q_obj = db.query(InterviewQuestion).get(st.session_state.current_question_id)
+                q_obj = db.get(InterviewQuestion, st.session_state.current_question_id)
                 q_obj.user_answer    = answer
                 q_obj.tech_score     = ev.get("technical_score", 0)
                 q_obj.comm_score     = ev.get("communication_score", 0)
@@ -683,7 +717,7 @@ def page_interview():
                     st.markdown("⚠️ **Improve:** " + " · ".join(ev["improvements"]))
 
     elif st.session_state.interview_ended:
-        session = db.query(InterviewSession).get(st.session_state.interview_session_id)
+        session = db.get(InterviewSession, st.session_state.interview_session_id)
         qs = db.query(InterviewQuestion).filter(
             InterviewQuestion.session_id == session.id,
             InterviewQuestion.overall_rating != None
@@ -804,8 +838,7 @@ def page_career():
             )
             resp = ask_claude(sys_p,
                 f"Skills:{skills}\nTarget:{target_role}\nLevel:{experience}", max_tokens=2000)
-            try:    guidance = json.loads(resp)
-            except: guidance = {}
+            guidance = safe_json_parse(resp, {})
 
         t1,t2,t3,t4 = st.tabs(["🗺️ Roadmap","📚 Courses","💼 Projects","🏭 Industry Skills"])
         with t1:
@@ -842,8 +875,7 @@ def page_ats():
                 "missing_keywords(list), improvement_suggestions(list). Return ONLY valid JSON."
             )
             resp = ask_claude(sys_p, raw + extra, max_tokens=1500)
-            try:    ats = json.loads(resp)
-            except: ats = {"ats_score":0}
+            ats = safe_json_parse(resp, {"ats_score": 50, "keywords_found": [], "missing_keywords": [], "improvement_suggestions": []})
 
         score = ats.get("ats_score", 0)
         color = "🟢" if score >= 75 else ("🟡" if score >= 50 else "🔴")
@@ -869,7 +901,7 @@ def page_cover_letter():
     company   = c2.text_input("Company Name", "Google")
     job_desc  = st.text_area("Job Description", height=120)
     skills    = st.text_input("Your Skills (comma separated)", "Python, ML, SQL")
-    user      = db.query(User).get(st.session_state.user_id)
+    user      = db.get(User, st.session_state.user_id)
 
     if st.button("✉️ Generate Cover Letter", use_container_width=True):
         with st.spinner("Writing your cover letter..."):
@@ -897,7 +929,7 @@ def page_cover_letter():
 def page_profile():
     st.markdown("## 👤 Profile")
     st.markdown("---")
-    user = db.query(User).get(st.session_state.user_id)
+    user = db.get(User, st.session_state.user_id)
     c1, c2 = st.columns(2)
     name  = c1.text_input("Full Name",  value=user.name)
     email = c2.text_input("Email",      value=user.email, disabled=True)
