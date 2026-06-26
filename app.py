@@ -7,7 +7,7 @@ import streamlit as st
 import json
 import os
 import uuid
-import bcrypt
+from werkzeug.security import generate_password_hash, check_password_hash
 import pdfplumber
 import plotly.graph_objects as go
 import plotly.express as px
@@ -259,10 +259,10 @@ for key, val in {
 
 # ── Auth Helpers ──────────────────────────────────────────────────────────────
 def hash_password(pw: str) -> str:
-    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+    return generate_password_hash(pw)
 
 def verify_password(pw: str, hashed: str) -> bool:
-    return bcrypt.checkpw(pw.encode(), hashed.encode())
+    return check_password_hash(hashed, pw)
 
 def score_badge(score: float) -> str:
     pct = score * 10 if score <= 10 else score

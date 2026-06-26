@@ -4,10 +4,9 @@ pdfplumber
 pandas
 plotly
 sqlalchemy
-bcrypt
+werkzeug
 python-dotenv
 Pillow
 fpdf2
 textblob
-
 httpx
