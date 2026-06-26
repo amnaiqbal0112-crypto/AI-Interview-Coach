@@ -641,7 +641,24 @@ def page_interview():
 
     if not st.session_state.interview_active and not st.session_state.interview_ended:
         c1, c2, c3 = st.columns(3)
-        domain     = c1.selectbox("Domain", ["AI/ML", "Data Science", "Web Development", "System Design", "HR", "Python", "DSA"])
+        domain     = c1.selectbox("Domain", [
+        # Tech
+        "AI/ML", "Data Science", "Machine Learning", "Deep Learning",
+        "Python", "Java", "C++", "JavaScript", "TypeScript",
+        "Web Development", "Frontend Development", "Backend Development",
+        "Full Stack Development", "React", "Node.js", "Django", "Flask",
+        "DSA", "System Design", "Database / SQL", "DevOps", "Cloud (AWS/GCP/Azure)",
+        "Cybersecurity", "Blockchain", "Android Development", "iOS Development",
+        "Embedded Systems", "Computer Networks",
+        # Non-Tech
+        "HR", "Business Analyst", "Product Manager", "Project Manager",
+        "Digital Marketing", "Finance", "Accounting", "Sales",
+        "UI/UX Design", "Graphic Design", "Content Writing",
+        "Teaching / Education", "Healthcare / Medical",
+        "Customer Support", "Operations Management",
+        # General
+        "General / Mixed", "Fresher / Entry Level",
+    ])
         difficulty = c2.selectbox("Difficulty", ["Beginner", "Intermediate", "Advanced"])
         mode       = c3.selectbox("Mode", ["Technical", "HR", "Mixed"])
 
@@ -993,7 +1010,11 @@ def page_settings():
     st.markdown("## ⚙️ Settings")
     st.markdown("---")
     st.markdown("#### 🎤 Interview Preferences")
-    st.selectbox("Default Domain",     ["AI/ML","Data Science","Web Development","System Design","Python","DSA"])
+    st.selectbox("Default Domain", [
+        "AI/ML", "Data Science", "Python", "Web Development",
+        "System Design", "DSA", "HR", "Business Analyst",
+        "Product Manager", "General / Mixed",
+    ])
     st.selectbox("Default Difficulty", ["Beginner","Intermediate","Advanced"])
     st.selectbox("Default Mode",       ["Technical","HR","Mixed"])
     st.markdown("---")
