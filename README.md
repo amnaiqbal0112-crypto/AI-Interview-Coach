@@ -4,7 +4,7 @@
 
 An AI-powered interview preparation platform that helps job seekers practice mock interviews, analyze resumes, and get personalized career guidance — built with Streamlit and powered by Groq's LLaMA 3.3 70B model.
 
-🔗 **Live Demo:** [Click Here](https://your-app-link.streamlit.app)
+🔗 **Live Demo:** [Click Here](https://ai-interview-coach-7f55svbstrzwgcbvbu497f.streamlit.app/)
 
 ---
 
@@ -155,7 +155,9 @@ ai-interview-coach/
 
 **Amna Iqbal**
 - GitHub: [@amnaiqbal0112](https://github.com/amnaiqbal0112)
-- LinkedIn: [Your LinkedIn]
+- LinkedIn: (www.linkedin.com/in/amna-iqbal-119126389)
+
+
 
 ---
 
